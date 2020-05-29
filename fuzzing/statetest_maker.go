@@ -18,14 +18,15 @@ package fuzzing
 
 import (
 	"encoding/json"
+	"io"
+	"math/big"
+	"math/rand"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/tests"
 	"github.com/holiman/goevmlab/ops"
-	"io"
-	"math/big"
-	"math/rand"
 )
 
 // The sender
@@ -267,7 +268,10 @@ func (g *GstMaker) Fill(traceOutput io.Writer) error {
 		cfg.Debug = true
 		cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, traceOutput)
 	}
-	statedb, _ := test.Run(subtest, cfg)
+	statedb, err := test.Run(subtest, cfg)
+	if err != nil {
+		return err
+	}
 
 	root := statedb.IntermediateRoot(true)
 	logs := rlpHash(statedb.Logs())
