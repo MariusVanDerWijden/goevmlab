@@ -275,7 +275,7 @@ func (g *GstMaker) Fill(traceOutput io.Writer) error {
 	return nil
 }
 
-func basicStateTest() *GstMaker {
+func basicStateTest(fork string) *GstMaker {
 	gst := NewGstMaker()
 	// Add sender
 	gst.AddAccount(sender, GenesisAccount{
@@ -284,13 +284,13 @@ func basicStateTest() *GstMaker {
 		Storage: make(map[common.Hash]common.Hash),
 		Code:    []byte{},
 	})
-	gst.EnableFork("Istanbul")
+	gst.EnableFork(fork)
 	return gst
 }
 
 // GenerateStateTest generates a random state tests
 func GenerateStateTest(name string) *GeneralStateTest {
-	gst := basicStateTest()
+	gst := basicStateTest("Istanbul")
 	// add some random accounts
 	dest := gst.randomFillGenesisAlloc()
 	// The transaction
@@ -313,7 +313,7 @@ func GenerateStateTest(name string) *GeneralStateTest {
 }
 
 func GenerateBlake() *GstMaker {
-	gst := basicStateTest()
+	gst := basicStateTest("Istanbul")
 	// Add a contract which calls blake
 	dest := common.HexToAddress("0x0000ca1100b1a7e")
 	gst.AddAccount(dest, GenesisAccount{
@@ -345,7 +345,7 @@ func GenerateBlakeTest(name string) *GeneralStateTest {
 }
 
 func Generate2200Test() *GstMaker {
-	gst := basicStateTest()
+	gst := basicStateTest("Istanbul")
 	// The accounts which we want to be able to invoke
 	addrs := []common.Address{
 		common.HexToAddress("0xF1"),
