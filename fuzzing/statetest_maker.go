@@ -268,7 +268,7 @@ func (g *GstMaker) Fill(traceOutput io.Writer) error {
 		cfg.Debug = true
 		cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, traceOutput)
 	}
-	statedb, err := test.Run(subtest, cfg)
+	_, statedb, err := test.Run(subtest, cfg, false)
 	if err != nil {
 		return err
 	}
