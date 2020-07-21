@@ -67,7 +67,7 @@ func main() {
 }
 
 func createTests(location, prefix string, limit int) error {
-	base := fuzzing.GenerateBLS()
+	base, _ := fuzzing.GenerateBLS()
 	target := base.GetDestination()
 	fmt.Printf("target: %v\n", target.Hex())
 
