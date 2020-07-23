@@ -268,12 +268,11 @@ func (g *GstMaker) Fill(traceOutput io.Writer) error {
 		cfg.Debug = true
 		cfg.Tracer = vm.NewJSONLogger(&vm.LogConfig{}, traceOutput)
 	}
-	_, statedb, err := test.Run(subtest, cfg, false)
+	_, statedb, root, err := test.RunNoVerify(subtest, cfg, false)
 	if err != nil {
 		return err
 	}
 
-	root := statedb.IntermediateRoot(true)
 	logs := rlpHash(statedb.Logs())
 	g.SetResult(root, logs)
 	return nil
