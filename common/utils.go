@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gopkg.in/urfave/cli.v1"
 	"io"
 	"io/ioutil"
 	"os"
@@ -33,6 +32,8 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+
+	"gopkg.in/urfave/cli.v1"
 
 	"github.com/holiman/goevmlab/evms"
 	"github.com/holiman/goevmlab/fuzzing"
@@ -60,8 +61,8 @@ var (
 		//Required: true,
 	}
 	ThreadFlag = cli.IntFlag{
-		Name:  "paralell",
-		Usage: "Number of paralell executions to use.",
+		Name:  "parallel",
+		Usage: "Number of parallel executions to use.",
 		Value: runtime.NumCPU(),
 	}
 	LocationFlag = cli.StringFlag{
