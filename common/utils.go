@@ -311,7 +311,11 @@ func ExecuteFuzzer(c *cli.Context, generatorFn GeneratorFn, name string) error {
 				eq := evms.CompareFiles(vms, readers)
 				if !eq {
 					atomic.StoreInt64(&abort, 1)
-					fmt.Printf("output files: %v, %v, %v\n", outputs[0].Name(), outputs[1].Name(), outputs[2].Name())
+					s := "output files: "
+					for _, f := range outputs {
+						s = fmt.Sprintf("%v %v", s, f.Name())
+					}
+					fmt.Println(s)
 					consensusCh <- file
 				} else if slowTest != 0 {
 					slowCh <- file

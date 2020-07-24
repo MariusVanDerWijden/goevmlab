@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/tests"
 	"github.com/holiman/goevmlab/ops"
+	"github.com/holiman/goevmlab/program"
 )
 
 // The sender
@@ -385,4 +386,57 @@ func Generate2200Test() *GstMaker {
 		gst.SetTx(tx)
 	}
 	return gst
+}
+
+func GenerateECRecover() (*GstMaker, []byte) {
+	gst := basicStateTest("Istanbul")
+	// Add a contract which calls BLS
+	dest := common.HexToAddress("0x00ca11ec5ec04e5")
+	code := RandCallECRecover()
+	gst.AddAccount(dest, GenesisAccount{
+		Code:    code,
+		Balance: new(big.Int),
+		Storage: make(map[common.Hash]common.Hash),
+	})
+	// The transaction
+	{
+		tx := &stTransaction{
+			// 8M gaslimit
+			GasLimit:   []uint64{8000000},
+			Nonce:      0,
+			Value:      []string{randHex(4)},
+			Data:       []string{randHex(100)},
+			GasPrice:   big.NewInt(0x01),
+			To:         dest.Hex(),
+			PrivateKey: hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"),
+		}
+		gst.SetTx(tx)
+	}
+	return gst, code
+}
+
+func RandCallECRecover() []byte {
+	p := program.NewProgram()
+	data := make([]byte, 128)
+	rand.Read(data)
+	p.Mstore(data, 0)
+	memInFn := func() (offset, size interface{}) {
+		offset, size = 0, 128
+		return
+	}
+	// blake outputs 32 bytes
+	memOutFn := func() (offset, size interface{}) {
+		offset, size = 0, 32
+		return
+	}
+	addrGen := func() interface{} {
+		return 1
+	}
+	p2 := RandCall(GasRandomizer(), addrGen, ValueRandomizer(), memInFn, memOutFn)
+	p.AddAll(p2)
+	// pop the ret value
+	p.Op(ops.POP)
+	// Store the output in some slot, to make sure the stateroot changes
+	p.MemToStorage(0, 64, 0)
+	return p.Bytecode()
 }

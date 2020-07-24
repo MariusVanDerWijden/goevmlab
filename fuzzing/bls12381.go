@@ -49,7 +49,7 @@ var precompilesBLS = []blsPrec{
 }
 
 func GenerateBLS() (*GstMaker, []byte) {
-	gst := basicStateTest("Berlin")
+	gst := basicStateTest("Istanbul")
 	// Add a contract which calls BLS
 	dest := common.HexToAddress("0x00ca110b15012381")
 	code := RandCallBLS()
@@ -91,7 +91,7 @@ func RandCallBLS() []byte {
 			return
 		}
 		addrGen := func() interface{} {
-			return precompile.addr
+			return 0x01
 		}
 		p2 := RandCall(GasRandomizer(), addrGen, ValueRandomizer(), memInFn, memOutFn)
 		p.AddAll(p2)
