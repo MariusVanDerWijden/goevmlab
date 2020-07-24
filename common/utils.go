@@ -276,9 +276,10 @@ func ExecuteFuzzer(c *cli.Context, generatorFn GeneratorFn, name string) error {
 					// Continue to drain the testch
 					continue
 				}
-				// Zero out the output files
+				// Zero out the output files and reset offset
 				for _, f := range outputs {
 					_ = f.Truncate(0)
+					_, _ = f.Seek(0, 0)
 				}
 				var slowTest uint32
 				// Kick off the binaries
@@ -299,9 +300,10 @@ func ExecuteFuzzer(c *cli.Context, generatorFn GeneratorFn, name string) error {
 				}
 				wg.Wait()
 				var readers []io.Reader
-				// Seet to beginning
+				// Flush file and set reset offset
 				for _, f := range outputs {
 					_ = f.Sync()
+					_, _ = f.Seek(0, 0)
 					readers = append(readers, f)
 				}
 				atomic.AddUint64(&numTests, 1)
