@@ -17,7 +17,6 @@
 package fuzzing
 
 import (
-	crypto "crypto/rand"
 	"math/big"
 	"math/rand"
 
@@ -49,7 +48,7 @@ var precompilesBLS = []blsPrec{
 }
 
 func GenerateBLS() (*GstMaker, []byte) {
-	gst := basicStateTest("Berlin")
+	gst := basicStateTest("Istanbul")
 	// Add a contract which calls BLS
 	dest := common.HexToAddress("0x00ca110b15012381")
 	code := RandCallBLS()
@@ -113,7 +112,7 @@ func NewG1Add() []byte {
 func NewG1Mul() []byte {
 	a := NewG1Point()
 	mul := make([]byte, 32)
-	rand.Read(mul)
+	//rand.Read(mul)
 	return append(a, mul...)
 }
 
@@ -217,13 +216,13 @@ func NewPairing() []byte {
 }
 
 func NewFieldElement() []byte {
-	ret, err := crypto.Int(reader, modulo)
+	/*ret, err := crypto.Int(reader, modulo)
 	if err != nil {
 		panic(err)
 	}
-	bytes := ret.Bytes()
+	//bytes := ret.Bytes()*/
 	buf := make([]byte, 48)
-	copy(buf[48-len(bytes):], bytes)
+	//copy(buf[48-len(bytes):], bytes)
 	return buf
 }
 

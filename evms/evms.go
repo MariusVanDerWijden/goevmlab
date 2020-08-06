@@ -49,6 +49,8 @@ func CompareFiles(vms []Evm, readers []io.Reader) bool {
 	}
 	refOut := scanners[0]
 	refVm := vms[0]
+
+	//var log vm.StructLog
 	for refOut.Scan() {
 		for i, scanner := range scanners[1:] {
 			scanner.Scan()

@@ -112,8 +112,12 @@ func (evm *ParityVM) Copy(out io.Writer, input io.Reader) {
 		}
 		// When geth encounters end of code, it continues anyway, on a 'virtual' STOP.
 		// In order to handle that, we need to drop all STOP opcodes.
-		if elem.Op == 0x0 {
-			continue
+		//if elem.Op == 0x0 {
+		//	continue
+		//}
+		// if returnData is null -> returnData = []
+		if elem.ReturnStack == nil {
+			elem.ReturnStack = make([]uint32, 0)
 		}
 		//fmt.Printf("parity: %v\n", string(data))
 		jsondata, _ := json.Marshal(elem)
