@@ -417,26 +417,34 @@ func GenerateECRecover() (*GstMaker, []byte) {
 
 func RandCallECRecover() []byte {
 	p := program.NewProgram()
-	data := make([]byte, 128)
-	rand.Read(data)
-	p.Mstore(data, 0)
-	memInFn := func() (offset, size interface{}) {
-		offset, size = 0, 128
-		return
+	offset := 0
+	rounds := rand.Int31n(10000)
+	for i := int32(0); i < rounds; i++ {
+		data := make([]byte, 128)
+		rand.Read(data)
+		p.Mstore(data, 0)
+		memInFn := func() (offset, size interface{}) {
+			offset, size = 0, 128
+			return
+		}
+		// ecrecover outputs 32 bytes
+		memOutFn := func() (offset, size interface{}) {
+			offset, size = 0, 32
+			return
+		}
+		addrGen := func() interface{} {
+			return 7
+		}
+		gasRand := func() interface{} {
+			return big.NewInt(rand.Int63n(100000))
+		}
+		p2 := RandCall(gasRand, addrGen, ValueRandomizer(), memInFn, memOutFn)
+		p.AddAll(p2)
+		// pop the ret value
+		p.Op(ops.POP)
+		// Store the output in some slot, to make sure the stateroot changes
+		p.MemToStorage(0, 32, offset)
+		offset += 32
 	}
-	// blake outputs 32 bytes
-	memOutFn := func() (offset, size interface{}) {
-		offset, size = 0, 32
-		return
-	}
-	addrGen := func() interface{} {
-		return 1
-	}
-	p2 := RandCall(GasRandomizer(), addrGen, ValueRandomizer(), memInFn, memOutFn)
-	p.AddAll(p2)
-	// pop the ret value
-	p.Op(ops.POP)
-	// Store the output in some slot, to make sure the stateroot changes
-	p.MemToStorage(0, 64, 0)
 	return p.Bytecode()
 }

@@ -17,7 +17,6 @@
 package fuzzing
 
 import (
-	crypto "crypto/rand"
 	"math/big"
 	"math/rand"
 
@@ -91,7 +90,7 @@ func RandCallBLS() []byte {
 			return
 		}
 		addrGen := func() interface{} {
-			return 0x01
+			return precompile.addr
 		}
 		p2 := RandCall(GasRandomizer(), addrGen, ValueRandomizer(), memInFn, memOutFn)
 		p.AddAll(p2)
@@ -113,7 +112,7 @@ func NewG1Add() []byte {
 func NewG1Mul() []byte {
 	a := NewG1Point()
 	mul := make([]byte, 32)
-	rand.Read(mul)
+	//rand.Read(mul)
 	return append(a, mul...)
 }
 
@@ -217,13 +216,13 @@ func NewPairing() []byte {
 }
 
 func NewFieldElement() []byte {
-	ret, err := crypto.Int(reader, modulo)
+	/*ret, err := crypto.Int(reader, modulo)
 	if err != nil {
 		panic(err)
 	}
-	bytes := ret.Bytes()
+	//bytes := ret.Bytes()*/
 	buf := make([]byte, 48)
-	copy(buf[48-len(bytes):], bytes)
+	//copy(buf[48-len(bytes):], bytes)
 	return buf
 }
 
