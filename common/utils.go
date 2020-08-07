@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -434,4 +435,53 @@ func Copy(src, dst string) error {
 		return err
 	}
 	return out.Close()
+}
+
+func RunTest(vms []evms.Evm, generator GeneratorFn, name string) error {
+	var (
+		outputs []*os.File
+		readers []io.Reader
+	)
+	if len(vms) < 1 {
+		return fmt.Errorf("no vms specified")
+	}
+	// Create input for evms
+	var rTest [4]byte
+	rand.Read(rTest[:])
+	testName := fmt.Sprintf("%v-%v", name, rTest)
+	test := generator().ToGeneralStateTest(testName)
+	fileName, err := storeTest("", test, testName)
+	//defer os.Remove(fileName)
+	if err != nil {
+		return err
+	}
+	// Open/create outputs for writing
+	for _, evm := range vms {
+		var rOut [4]byte
+		rand.Read(rOut[:])
+		out, err := os.OpenFile(fmt.Sprintf("./%v-%v-output.jsonl", evm.Name(), rOut), os.O_CREATE|os.O_RDWR, 0755)
+		defer os.Remove(out.Name())
+		if err != nil {
+			return fmt.Errorf("error opening output: %v", err)
+		}
+		outputs = append(outputs, out)
+	}
+	// Kick off the binaries
+	for i, vm := range vms {
+		if str, err := vm.RunStateTest(fileName, outputs[i], false); err != nil {
+			return fmt.Errorf("failed running test %v %v", str, err)
+		}
+	}
+	os.Remove(fileName)
+	// Seek to beginning
+	for _, f := range outputs {
+		_, _ = f.Seek(0, 0)
+		readers = append(readers, f)
+	}
+	// Compare outputs
+	if eq := evms.CompareFiles(vms, readers); !eq {
+		fmt.Printf("output files: %v, %v, %v\n", outputs[0].Name(), outputs[1].Name(), outputs[2].Name())
+		return fmt.Errorf("Consensus error")
+	}
+	return nil
 }

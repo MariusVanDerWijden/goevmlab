@@ -53,14 +53,12 @@ func main() {
 	}
 }
 
-func startFuzzer(c *cli.Context) error {
-	generator := makeFuzzGenerator
+func startFuzzer(c *cli.Context, data []byte) error {
+	generator := func() *fuzzing.GstMaker {
+		base := fuzzing.GenerateFullFuzz(data)
+		target := base.GetDestination()
+		base.SetCode(target, fuzzing.RandCallBlake())
+		return base
+	}
 	return common.ExecuteFuzzer(c, generator, "blaketest")
-}
-
-func makeFuzzGenerator() *fuzzing.GstMaker {
-	base := fuzzing.GenerateBlake()
-	target := base.GetDestination()
-	base.SetCode(target, fuzzing.RandCallBlake())
-	return base
 }

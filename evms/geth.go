@@ -20,10 +20,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"io"
 	"os"
 	"os/exec"
+
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
 // GethEVM is s Evm-interface wrapper around the `evm` binary, based on go-ethereum.

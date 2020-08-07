@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the goevmlab library. If not, see <http://www.gnu.org/licenses/>.
 
+// +build gofuzz
 package fuzzing
 
 import (
@@ -24,16 +25,18 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	fuzz "github.com/google/gofuzz"
 	"github.com/holiman/goevmlab/ops"
 	"github.com/holiman/goevmlab/program"
 )
 
 func GenerateFullFuzz(data []byte) *GstMaker {
 	gst := basicStateTest("Istanbul")
+	f := fuzz.NewFromGoFuzz(data)
 	// Add a contract which calls blake
 	dest := common.HexToAddress("0x0000ca1100b1a7e")
 	gst.AddAccount(dest, GenesisAccount{
-		Code:    MakeRandProgram(data),
+		Code:    MakeRandProgram(f),
 		Balance: new(big.Int),
 		Storage: make(map[common.Hash]common.Hash),
 	})
@@ -54,24 +57,21 @@ func GenerateFullFuzz(data []byte) *GstMaker {
 	return gst
 }
 
-// GenerateFullTest generates a random test
-func GenerateFullTest(name string) *GeneralStateTest {
-	gst := GenerateFullFuzz()
-	return gst.ToGeneralStateTest(name)
-}
-
-func MakeRandProgram(data []byte) []byte {
+func MakeRandProgram(fuzz *fuzz.Fuzzer) []byte {
 	// fill the memory
 	p := program.NewProgram()
-	dataCopy := data
 	var jumpDest uint64
-	for true {
-		rnd := 0
+	fuzz.Fuzz(&jumpDest)
+	var loopCounter byte
+	fuzz.Fuzz(&loopCounter)
+	for i := byte(0); i < loopCounter; i++ {
+		var rnd byte
+		fuzz.Fuzz(&rnd)
 		switch rnd {
 		case 0:
-			op := dataCopy[0]
+			var op byte
+			fuzz.Fuzz(&op)
 			p.Op(ops.OpCode(op))
-			dataCopy = dataCopy[:1]
 		case 1:
 			jumpDest = p.Jumpdest()
 		case 2:
@@ -81,48 +81,79 @@ func MakeRandProgram(data []byte) []byte {
 		case 4:
 			p.Push(jumpDest)
 		case 5:
-			var condition bool
-			p.JumpIf(jumpDest, condition)
+			/*
+				var condition bool
+				fuzz.Fuzz(&condition)
+				p.JumpIf(jumpDest, condition)
+			*/
 		case 6:
 			var start, size, slot int
+			fuzz.Fuzz(&start)
+			fuzz.Fuzz(&size)
+			fuzz.Fuzz(&slot)
 			p.MemToStorage(start, size, slot)
 		case 7:
 			var data []byte
 			var memStart uint32
+			fuzz.Fuzz(&data)
+			fuzz.Fuzz(&memStart)
 			p.Mstore(data, memStart)
 		case 8:
 			var data []byte
+			fuzz.Fuzz(&data)
 			p.Push(data)
 		case 9:
-			var slot interface{}
-			var value interface{}
-			p.Sstore(slot, value)
+			/*
+				var slot interface{}
+				var value interface{}
+				fuzz.Fuzz(&slot)
+				fuzz.Fuzz(&value)
+				p.Sstore(slot, value)
+			*/
 		case 10:
 			var data []byte
+			fuzz.Fuzz(&data)
 			p.ReturnData(data)
 		case 11:
 			var offset uint32
 			var length uint32
+			fuzz.Fuzz(&offset)
+			fuzz.Fuzz(&length)
 			p.Return(offset, length)
 		case 12:
 			var code []byte
 			var isCreate2 bool
 			var callOp ops.OpCode
+			fuzz.Fuzz(&code)
+			fuzz.Fuzz(&isCreate2)
+			fuzz.Fuzz(&callOp)
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 13:
-			var gas *big.Int
-			var address interface{}
-			var value interface{}
-			var inOffset interface{}
-			var inSize interface{}
-			var outOffset interface{}
-			var outSize interface{}
-			p.Call(gas, address, value, inOffset, inSize, outOffset, outSize)
-		case 14:
-			// Call precompile
-			CallPrecompile(p, dataCopy)
+			/*
+					var gas *big.Int
+					var address interface{}
+					var value interface{}
+					var inOffset interface{}
+					var inSize interface{}
+					var outOffset interface{}
+					var outSize interface{}
+					fuzz.Fuzz(&gas)
+					fuzz.Fuzz(&address)
+					fuzz.Fuzz(&value)
+					fuzz.Fuzz(&inOffset)
+					fuzz.Fuzz(&inSize)
+					fuzz.Fuzz(&outOffset)
+					fuzz.Fuzz(&outSize)
+					p.Call(gas, address, value, inOffset, inSize, outOffset, outSize)
+				case 14:
+					// Call precompile
+					var data []byte
+					fuzz.Fuzz(&data)
+					CallPrecompile(p, data)
+			*/
 		case 15:
 			// Set up jumpDest from Data
+			fuzz.Fuzz(&jumpDest)
 		case 16:
 		}
 	}
