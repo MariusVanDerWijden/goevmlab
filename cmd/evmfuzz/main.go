@@ -14,51 +14,61 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the goevmlab library. If not, see <http://www.gnu.org/licenses/>.
 
-package main
+package evmfuzz
 
 import (
-	"fmt"
-	"os"
-	"path/filepath"
-
-	"gopkg.in/urfave/cli.v1"
-
-	"github.com/holiman/goevmlab/common"
-	"github.com/holiman/goevmlab/fuzzing"
+	fuzz "github.com/google/gofuzz"
+	"github.com/holiman/goevmlab/ops"
+	"github.com/holiman/goevmlab/program"
 )
 
-func initApp() *cli.App {
-	app := cli.NewApp()
-	app.Name = filepath.Base(os.Args[0])
-	app.Author = "Martin Holst Swende, Marius van der Wijden"
-	app.Usage = "Generator for fuzz evm (state-)tests"
-	app.Flags = []cli.Flag{
-		common.GethFlag,
-		common.ParityFlag,
-		common.NethermindFlag,
-		common.AlethFlag,
-		common.ThreadFlag,
-		common.LocationFlag,
-	}
-	app.Action = startFuzzer
-	return app
+var callTypes = []ops.OpCode{ops.CALL, ops.CALLCODE, ops.DELEGATECALL, ops.STATICCALL}
+
+func randCallType(fuzz *fuzz.Fuzzer) ops.OpCode {
+	var callType byte
+	fuzz.Fuzz(&callType)
+	return callTypes[int(callType)%len(callTypes)]
 }
 
-var app = initApp()
-
-func main() {
-	if err := app.Run(os.Args); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+type FuncCall struct {
+	gas          interface{}
+	addr         interface{}
+	val          interface{}
+	memInOffset  interface{}
+	memInSize    interface{}
+	memOutOffset interface{}
+	memOutSize   interface{}
+	callType     ops.OpCode
 }
 
-func startFuzzer(c *cli.Context, data []byte) error {
-	generator := func() *fuzzing.GstMaker {
-		base := fuzzing.GenerateFullFuzz(data)
-		target := base.GetDestination()
-		base.SetCode(target, fuzzing.RandCallBlake())
-		return base
+func RandCall(p *program.Program, call FuncCall) {
+	if call.memOutSize != nil {
+		p.Push(call.memOutSize)   //mem out size
+		p.Push(call.memOutOffset) // mem out start
+	} else {
+		p.Push(0)
+		p.Push(call.memOutOffset)
 	}
-	return common.ExecuteFuzzer(c, generator, "blaketest")
+	if call.memInSize != nil {
+		p.Push(call.memInSize)   //mem in size
+		p.Push(call.memInOffset) // mem in start
+	} else {
+		p.Push(0)
+		p.Push(call.memInOffset)
+	}
+	op := call.callType
+	if op == ops.CALL || op == ops.CALLCODE {
+		if call.val != nil {
+			p.Push(call.val) //value
+		} else {
+			p.Push(0)
+		}
+	}
+	p.Push(call.addr)
+	if call.gas != nil {
+		p.Push(call.gas)
+	} else {
+		p.Op(ops.GAS)
+	}
+	p.Op(op)
 }
