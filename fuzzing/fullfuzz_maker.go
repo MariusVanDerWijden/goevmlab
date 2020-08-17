@@ -26,8 +26,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	fuzz "github.com/google/gofuzz"
+	"github.com/holiman/goevmlab/cmd/evmfuzz"
 	"github.com/holiman/goevmlab/ops"
 	"github.com/holiman/goevmlab/program"
+	"github.com/holiman/uint256"
 )
 
 func GenerateFullFuzz(data []byte) *GstMaker {
@@ -129,28 +131,9 @@ func MakeRandProgram(fuzz *fuzz.Fuzzer) []byte {
 			fuzz.Fuzz(&callOp)
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 13:
-			/*
-					var gas *big.Int
-					var address interface{}
-					var value interface{}
-					var inOffset interface{}
-					var inSize interface{}
-					var outOffset interface{}
-					var outSize interface{}
-					fuzz.Fuzz(&gas)
-					fuzz.Fuzz(&address)
-					fuzz.Fuzz(&value)
-					fuzz.Fuzz(&inOffset)
-					fuzz.Fuzz(&inSize)
-					fuzz.Fuzz(&outOffset)
-					fuzz.Fuzz(&outSize)
-					p.Call(gas, address, value, inOffset, inSize, outOffset, outSize)
-				case 14:
-					// Call precompile
-					var data []byte
-					fuzz.Fuzz(&data)
-					CallPrecompile(p, data)
-			*/
+			callRandomPrecompile(p, fuzz)
+		case 14:
+			callSpecificPrecompile(p, fuzz)
 		case 15:
 			// Set up jumpDest from Data
 			fuzz.Fuzz(&jumpDest)
@@ -160,7 +143,7 @@ func MakeRandProgram(fuzz *fuzz.Fuzzer) []byte {
 	return p.Bytecode()
 }
 
-func CallPrecompile(p *program.Program, dataCopy []byte) {
+func CallBLSPrecompile(p *program.Program, dataCopy []byte) {
 	data := randomArgs()
 	p.Mstore(data, 0)
 	memInFn := func() (offset, size interface{}) {
@@ -205,4 +188,69 @@ func randomArgs() []byte {
 		data[212] = 1
 	}
 	return data[0:213]
+}
+
+func callRandomPrecompile(p *program.Program, fuzz *fuzz.Fuzzer) {
+	var gas *big.Int
+	var address byte // Only call the first 256 precompiles
+	var value uint256.Int
+	var inOffset uint32
+	var inSize uint32
+	var outOffset uint32
+	var outSize uint32
+	fuzz.Fuzz(&gas)
+	fuzz.Fuzz(&address)
+	fuzz.Fuzz(&value)
+	fuzz.Fuzz(&inOffset)
+	fuzz.Fuzz(&inSize)
+	fuzz.Fuzz(&outOffset)
+	fuzz.Fuzz(&outSize)
+	p.Call(gas, address, value, inOffset, inSize, outOffset, outSize)
+}
+
+func callSpecificPrecompile(p *program.Program, fuzz *fuzz.Fuzzer) {
+	var val byte
+	fuzz.Fuzz(&val)
+	var offset uint32
+	switch val % 18 {
+	case 1:
+		// Call ECRecover
+	case 2:
+		// Call sha256hash
+	case 3:
+		// Call ripemd160hash
+	case 4:
+		// Call dataCopy
+	case 5:
+		// Call bigModExp
+	case 6:
+		// Call bn256AddIstanbul
+	case 7:
+		// Call bn256ScalarMulIstanbul
+	case 8:
+		// Call bn256PairingIstanbul
+	case 9:
+		// Call blake2f
+		evmfuzz.CallBlake(p, fuzz, offset)
+
+	// BLS tests
+	case 10:
+		// Call blsG1Add
+	case 11:
+		// Call blsG1Mul
+	case 12:
+		// Call blsG1MultiExp
+	case 13:
+		// Call blsG2Add
+	case 14:
+		// Call blsG2Mul
+	case 15:
+		// Call blsG2MultiExp
+	case 16:
+		// Call blsPairing
+	case 17:
+		// Call blsMapG1
+	case 18:
+		// Call blsMapG2
+	}
 }
