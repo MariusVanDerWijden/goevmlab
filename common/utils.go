@@ -18,11 +18,11 @@ package common
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	mrand "math/rand"
 	"os"
 	"os/signal"
 	"path"
@@ -437,7 +437,7 @@ func Copy(src, dst string) error {
 	return out.Close()
 }
 
-func RunTest(vms []evms.Evm, generator GeneratorFn, name string) error {
+func RunTest(vms []evms.Evm, generator GeneratorFn, name string, randSrc *mrand.Rand) error {
 	var (
 		outputs []*os.File
 		readers []io.Reader
@@ -446,8 +446,7 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string) error {
 		return fmt.Errorf("no vms specified")
 	}
 	// Create input for evms
-	var rTest [4]byte
-	rand.Read(rTest[:])
+	rTest := randSrc.Int31()
 	testName := fmt.Sprintf("%v-%v", name, rTest)
 	test := generator().ToGeneralStateTest(testName)
 	fileName, err := storeTest("", test, testName)
@@ -457,8 +456,7 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string) error {
 	}
 	// Open/create outputs for writing
 	for _, evm := range vms {
-		var rOut [4]byte
-		rand.Read(rOut[:])
+		rOut := randSrc.Int31()
 		out, err := os.OpenFile(fmt.Sprintf("./%v-%v-output.jsonl", evm.Name(), rOut), os.O_CREATE|os.O_RDWR, 0755)
 		defer os.Remove(out.Name())
 		if err != nil {
@@ -472,7 +470,6 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string) error {
 			return fmt.Errorf("failed running test %v %v", str, err)
 		}
 	}
-	os.Remove(fileName)
 	// Seek to beginning
 	for _, f := range outputs {
 		_, _ = f.Seek(0, 0)
@@ -480,8 +477,9 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string) error {
 	}
 	// Compare outputs
 	if eq := evms.CompareFiles(vms, readers); !eq {
+		fmt.Printf("input file: %v\n", fileName)
 		fmt.Printf("output files: %v, %v, %v\n", outputs[0].Name(), outputs[1].Name(), outputs[2].Name())
-		return fmt.Errorf("Consensus error")
+		return fmt.Errorf("Consensus error: %v", fileName)
 	}
-	return nil
+	return os.Remove(fileName)
 }

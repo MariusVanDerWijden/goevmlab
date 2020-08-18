@@ -15,6 +15,7 @@ require (
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/golang/snappy v0.0.2-0.20200707131729-196ae77b8a26
 	github.com/google/gofuzz v1.1.1-0.20200604201612-c04b05f3adfa
+	github.com/holiman/uint256 v1.1.1
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/olekukonko/tablewriter v0.0.4 // indirect
 	github.com/rivo/tview v0.0.0-20200712113419-c65badfc3d92

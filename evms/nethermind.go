@@ -107,6 +107,9 @@ func (evm *NethermindVM) Copy(out io.Writer, input io.Reader) {
 			// For now, just ignore these
 			continue
 		}
+		if elem.ReturnStack == nil {
+			elem.ReturnStack = make([]uint32, 0)
+		}
 		// When geth encounters end of code, it continues anyway, on a 'virtual' STOP.
 		// In order to handle that, we need to drop all STOP opcodes.
 		if elem.Op == 0x0 {

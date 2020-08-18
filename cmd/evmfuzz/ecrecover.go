@@ -1,8 +1,6 @@
 package evmfuzz
 
 import (
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/go-ethereum/crypto"
 	fuzz "github.com/google/gofuzz"
 	"github.com/holiman/goevmlab/fuzzing"
 	"github.com/holiman/goevmlab/ops"
@@ -32,9 +30,11 @@ func CallECRecover(p *program.Program, fuzz *fuzz.Fuzzer, memOffset uint32) {
 }
 
 func randomECRecoverArgs(p *program.Program, fuzz *fuzz.Fuzzer) []byte {
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
-	key.Sign()
+	/*
+		key, err := crypto.GenerateKey()
+		if err != nil {
+			panic(err)
+		}
+		key.Sign()*/
+	return []byte{}
 }

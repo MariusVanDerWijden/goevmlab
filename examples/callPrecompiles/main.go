@@ -19,7 +19,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/holiman/goevmlab/ops"
 	"math/big"
 	"os"
 	"time"
@@ -77,31 +76,6 @@ func runit() error {
 	a := program.NewProgram()
 
 	aAddr := common.HexToAddress("0xff0a")
-
-	/*
-	nop
-	JUMPDEST    // []
-	MSIZE       // [0] out size
-	MSIZE       // [0,0] out offset
-	MSIZE       // [0,0,0] insize
-	MSIZE       // [0,0,0,0] inoffset
-	PUSH1 4     // [0,0,0,0,4] address
-	GAS         // [0,0,0,0,4,gas] Gas
-	STATICCALL  // [1] pops 6, pushes 1
-	JUMP        // []
-
-	 */
-
-	a.Op(ops.PC)
-	a.Op(ops.JUMPDEST)
-	a.Op(ops.MSIZE)
-	a.Op(ops.MSIZE)
-	a.Op(ops.MSIZE)
-	a.Op(ops.MSIZE)
-	a.Push(4)
-	a.Op(ops.GAS)
-	a.Op(ops.STATICCALL)
-	a.Op(ops.JUMP)
 
 	alloc := make(core.GenesisAlloc)
 	alloc[aAddr] = core.GenesisAccount{

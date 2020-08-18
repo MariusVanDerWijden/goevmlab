@@ -26,10 +26,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	fuzz "github.com/google/gofuzz"
-	"github.com/holiman/goevmlab/cmd/evmfuzz"
 	"github.com/holiman/goevmlab/ops"
 	"github.com/holiman/goevmlab/program"
-	"github.com/holiman/uint256"
 )
 
 func GenerateFullFuzz(data []byte) *GstMaker {
@@ -69,7 +67,7 @@ func MakeRandProgram(fuzz *fuzz.Fuzzer) []byte {
 	for i := byte(0); i < loopCounter; i++ {
 		var rnd byte
 		fuzz.Fuzz(&rnd)
-		switch rnd {
+		switch rnd % 20 {
 		case 0:
 			var op byte
 			fuzz.Fuzz(&op)
@@ -79,7 +77,7 @@ func MakeRandProgram(fuzz *fuzz.Fuzzer) []byte {
 		case 2:
 			jumpDest = p.Label()
 		case 3:
-			p.Jump(jumpDest)
+			//p.Jump(jumpDest)
 		case 4:
 			p.Push(jumpDest)
 		case 5:
@@ -92,6 +90,7 @@ func MakeRandProgram(fuzz *fuzz.Fuzzer) []byte {
 			var start, size, slot int
 			fuzz.Fuzz(&start)
 			fuzz.Fuzz(&size)
+			size = size % 255
 			fuzz.Fuzz(&slot)
 			p.MemToStorage(start, size, slot)
 		case 7:
@@ -193,7 +192,7 @@ func randomArgs() []byte {
 func callRandomPrecompile(p *program.Program, fuzz *fuzz.Fuzzer) {
 	var gas *big.Int
 	var address byte // Only call the first 256 precompiles
-	var value uint256.Int
+	var value *big.Int
 	var inOffset uint32
 	var inSize uint32
 	var outOffset uint32
@@ -211,7 +210,7 @@ func callRandomPrecompile(p *program.Program, fuzz *fuzz.Fuzzer) {
 func callSpecificPrecompile(p *program.Program, fuzz *fuzz.Fuzzer) {
 	var val byte
 	fuzz.Fuzz(&val)
-	var offset uint32
+	//var offset uint32
 	switch val % 18 {
 	case 1:
 		// Call ECRecover
@@ -231,7 +230,7 @@ func callSpecificPrecompile(p *program.Program, fuzz *fuzz.Fuzzer) {
 		// Call bn256PairingIstanbul
 	case 9:
 		// Call blake2f
-		evmfuzz.CallBlake(p, fuzz, offset)
+		//evmfuzz.CallBlake(p, fuzz, offset)
 
 	// BLS tests
 	case 10:
