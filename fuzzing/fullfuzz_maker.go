@@ -71,6 +71,9 @@ func MakeRandProgram(fuzz *fuzz.Fuzzer) []byte {
 		case 0:
 			var op byte
 			fuzz.Fuzz(&op)
+			if ops.OpCode(op) == ops.BLOCKHASH {
+				op = 0x01
+			}
 			p.Op(ops.OpCode(op))
 		case 1:
 			jumpDest = p.Jumpdest()
