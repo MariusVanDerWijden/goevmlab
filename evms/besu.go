@@ -105,13 +105,14 @@ func (evm *BesuVM) Copy(out io.Writer, input io.Reader) {
 			continue
 		}
 
-		op, _ := strconv.ParseInt(strings.Replace(elem2.Op, "0x", "", 1), 16, 8)
-		gas, _ := strconv.ParseInt(strings.Replace(elem2.Gas, "0x", "", 1), 10, 64)
-		gasCost, _ := strconv.ParseInt(strings.Replace(elem2.GasCost, "0x", "", 1), 10, 64)
+		op, _ := strconv.ParseInt(strings.Replace(elem2.Op, "0x", "", -1), 16, 16)
+		gas, _ := strconv.ParseInt(strings.Replace(elem2.Gas, "0x", "", -1), 16, 64)
+		gasCost, _ := strconv.ParseInt(strings.Replace(elem2.GasCost, "0x", "", -1), 16, 64)
 		var stack []*big.Int
 		for _, ele := range elem2.Stack {
 			el, _ := big.NewInt(0).SetString(strings.Replace(ele, "0x", "", 1), 16)
-			stack = append(stack, el)
+			// Besu prints out the stack in reverse order
+			stack = append([]*big.Int{el}, stack...)
 		}
 		elem := vm.StructLog{
 			Gas:           uint64(gas),
@@ -143,6 +144,12 @@ func (evm *BesuVM) Copy(out io.Writer, input io.Reader) {
 			//fmt.Printf("%v\n", string(data))
 			// For now, just ignore these
 			continue
+		}
+		if elem.ReturnStack == nil {
+			elem.ReturnStack = make([]uint32, 0)
+		}
+		if elem.Stack == nil {
+			elem.Stack = make([]*big.Int, 0)
 		}
 		// When geth encounters end of code, it continues anyway, on a 'virtual' STOP.
 		// In order to handle that, we need to drop all STOP opcodes.
