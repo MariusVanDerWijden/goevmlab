@@ -458,7 +458,6 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string, randSrc *mrand.
 	for _, evm := range vms {
 		rOut := randSrc.Int31()
 		out, err := os.OpenFile(fmt.Sprintf("./%v-%v-output.jsonl", evm.Name(), rOut), os.O_CREATE|os.O_RDWR, 0755)
-		defer os.Remove(out.Name())
 		if err != nil {
 			return fmt.Errorf("error opening output: %v", err)
 		}
@@ -480,6 +479,9 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string, randSrc *mrand.
 		fmt.Printf("input file: %v\n", fileName)
 		fmt.Printf("output files: %v, %v, %v\n", outputs[0].Name(), outputs[1].Name(), outputs[2].Name())
 		return fmt.Errorf("Consensus error: %v", fileName)
+	}
+	for _, out := range outputs {
+		defer os.Remove(out.Name())
 	}
 	return os.Remove(fileName)
 }

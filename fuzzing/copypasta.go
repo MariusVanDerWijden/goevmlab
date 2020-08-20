@@ -21,12 +21,13 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
-	"math/big"
 )
 
 // GenesisAlloc specifies the initial state that is part of the genesis block.
@@ -108,7 +109,6 @@ type stJSON struct {
 	Env  stEnv                    `json:"env"`
 	Pre  GenesisAlloc             `json:"pre"`
 	Tx   stTransaction            `json:"transaction"`
-	Out  hexutil.Bytes            `json:"out"`
 	Post map[string][]stPostState `json:"post"`
 }
 
