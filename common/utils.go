@@ -17,6 +17,7 @@
 package common
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -439,9 +440,10 @@ func Copy(src, dst string) error {
 
 func RunTest(vms []evms.Evm, generator GeneratorFn, name string, randSrc *mrand.Rand) error {
 	var (
-		outputs []*os.File
 		readers []io.Reader
+		wg      sync.WaitGroup
 	)
+	errChan := make(chan error)
 	if len(vms) < 1 {
 		return fmt.Errorf("no vms specified")
 	}
@@ -450,38 +452,43 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string, randSrc *mrand.
 	testName := fmt.Sprintf("%v-%v", name, rTest)
 	test := generator().ToGeneralStateTest(testName)
 	fileName, err := storeTest("", test, testName)
-	//defer os.Remove(fileName)
 	if err != nil {
 		return err
 	}
-	// Open/create outputs for writing
-	for _, evm := range vms {
-		rOut := randSrc.Int31()
-		out, err := os.OpenFile(fmt.Sprintf("./%v-%v-output.jsonl", evm.Name(), rOut), os.O_CREATE|os.O_RDWR, 0755)
-		if err != nil {
-			return fmt.Errorf("error opening output: %v", err)
-		}
-		outputs = append(outputs, out)
-	}
 	// Kick off the binaries
-	for i, vm := range vms {
-		if str, err := vm.RunStateTest(fileName, outputs[i], false); err != nil {
-			return fmt.Errorf("failed running test %v %v", str, err)
-		}
-	}
-	// Seek to beginning
-	for _, f := range outputs {
-		_, _ = f.Seek(0, 0)
-		readers = append(readers, f)
+	wg.Add(len(vms))
+	for _, vm := range vms {
+		r, w := io.Pipe()
+		go func() {
+			defer wg.Done()
+			if str, err := vm.RunStateTest(fileName, bufio.NewWriter(w), false); err != nil {
+				errChan <- fmt.Errorf("failed running test %v %v", str, err)
+			}
+			w.Close()
+		}()
+		readers = append(readers, bufio.NewReader(r))
 	}
 	// Compare outputs
 	if eq := evms.CompareFiles(vms, readers); !eq {
 		fmt.Printf("input file: %v\n", fileName)
-		fmt.Printf("output files: %v, %v, %v\n", outputs[0].Name(), outputs[1].Name(), outputs[2].Name())
+		fmt.Printf("output files: ")
+		// Running the tests failed, now run them once more and save the output to a file
+		rnd := randSrc.Int31()
+		for _, evm := range vms {
+			out, err := os.OpenFile(fmt.Sprintf("./%v-%v-output.jsonl", evm.Name(), rnd), os.O_CREATE|os.O_RDWR, 0755)
+			defer out.Close()
+			if err != nil {
+				return fmt.Errorf("error opening output: %v", err)
+			}
+			if str, err := evm.RunStateTest(fileName, out, false); err != nil {
+				return fmt.Errorf("failed running test %v %v", str, err)
+			}
+			fmt.Printf("%v, ", out.Name())
+		}
 		return fmt.Errorf("Consensus error: %v", fileName)
 	}
-	for _, out := range outputs {
-		defer os.Remove(out.Name())
-	}
+	wg.Wait()
+
+	// Test was successful, delete the test file
 	return os.Remove(fileName)
 }
