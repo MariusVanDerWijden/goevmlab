@@ -17,7 +17,7 @@
 package common
 
 import (
-	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -441,9 +441,7 @@ func Copy(src, dst string) error {
 func RunTest(vms []evms.Evm, generator GeneratorFn, name string, randSrc *mrand.Rand) error {
 	var (
 		readers []io.Reader
-		wg      sync.WaitGroup
 	)
-	errChan := make(chan error)
 	if len(vms) < 1 {
 		return fmt.Errorf("no vms specified")
 	}
@@ -456,17 +454,12 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string, randSrc *mrand.
 		return err
 	}
 	// Kick off the binaries
-	wg.Add(len(vms))
 	for _, vm := range vms {
-		r, w := io.Pipe()
-		go func() {
-			defer wg.Done()
-			if str, err := vm.RunStateTest(fileName, bufio.NewWriter(w), false); err != nil {
-				errChan <- fmt.Errorf("failed running test %v %v", str, err)
-			}
-			w.Close()
-		}()
-		readers = append(readers, bufio.NewReader(r))
+		var buf bytes.Buffer
+		if str, err := vm.RunStateTest(fileName, &buf, false); err != nil {
+			return fmt.Errorf("failed running test %v %v", str, err)
+		}
+		readers = append(readers, &buf)
 	}
 	// Compare outputs
 	if eq := evms.CompareFiles(vms, readers); !eq {
@@ -487,7 +480,6 @@ func RunTest(vms []evms.Evm, generator GeneratorFn, name string, randSrc *mrand.
 		}
 		return fmt.Errorf("Consensus error: %v", fileName)
 	}
-	wg.Wait()
 
 	// Test was successful, delete the test file
 	return os.Remove(fileName)
