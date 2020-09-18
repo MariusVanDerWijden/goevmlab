@@ -24,10 +24,7 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
-	"strconv"
-	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 )
 
@@ -75,20 +72,8 @@ func (evm *BesuVM) Name() string {
 func (vm *BesuVM) Close() {
 }
 
-type besuStructLog struct {
-	Pc            uint64                      `json:"pc"`
-	Op            string                      `json:"op"`
-	Gas           string                      `json:"gas"`
-	GasCost       string                      `json:"gasCost"`
-	Memory        []byte                      `json:"memory"`
-	MemorySize    int                         `json:"memSize"`
-	Stack         []string                    `json:"stack"`
-	ReturnStack   []uint32                    `json:"returnStack"`
-	ReturnData    []byte                      `json:"returnData"`
-	Storage       map[common.Hash]common.Hash `json:"-"`
-	Depth         int                         `json:"depth"`
-	RefundCounter uint64                      `json:"refund"`
-	Err           error                       `json:"-"`
+type besuStateRoot struct {
+	StateRoot string `json:"postHash"`
 }
 
 // feed reads from the reader, does some geth-specific filtering and
@@ -98,47 +83,23 @@ func (evm *BesuVM) Copy(out io.Writer, input io.Reader) {
 	scanner := bufio.NewScanner(input)
 	for scanner.Scan() {
 		data := scanner.Bytes()
-		var elem2 besuStructLog
-		err := json.Unmarshal(data, &elem2)
+		var elem vm.StructLog
+		err := json.Unmarshal(data, &elem)
 		if err != nil {
 			fmt.Printf("besu err: %v, line\n\t%v\n", err, string(data))
 			continue
 		}
 
-		op, _ := strconv.ParseInt(strings.Replace(elem2.Op, "0x", "", -1), 16, 16)
-		gas, _ := strconv.ParseInt(strings.Replace(elem2.Gas, "0x", "", -1), 16, 64)
-		gasCost, _ := strconv.ParseInt(strings.Replace(elem2.GasCost, "0x", "", -1), 16, 64)
-		var stack []*big.Int
-		for _, ele := range elem2.Stack {
-			el, _ := big.NewInt(0).SetString(strings.Replace(ele, "0x", "", 1), 16)
-			// Besu prints out the stack in reverse order
-			stack = append([]*big.Int{el}, stack...)
-		}
-		elem := vm.StructLog{
-			Gas:           uint64(gas),
-			Depth:         elem2.Depth,
-			Err:           elem2.Err,
-			GasCost:       uint64(gasCost),
-			Memory:        elem2.Memory,
-			MemorySize:    elem2.MemorySize,
-			Op:            vm.OpCode(op),
-			Pc:            elem2.Pc,
-			RefundCounter: elem2.RefundCounter,
-			ReturnData:    elem2.ReturnData,
-			ReturnStack:   elem2.ReturnStack,
-			Stack:         stack,
-			Storage:       elem2.Storage,
-		}
+		elem.Memory = make([]byte, 0)
 		// If the output cannot be marshalled, all fields will be blanks.
 		// We can detect that through 'depth', which should never be less than 1
 		// for any actual opcode
 		if elem.Depth == 0 {
 			if stateRoot.StateRoot == "" {
-				if err := json.Unmarshal(data, &stateRoot); err == nil {
-					// geth doesn't 0x-prefix stateroot
-					if r := stateRoot.StateRoot; len(r) > 0 {
-						stateRoot.StateRoot = fmt.Sprintf("0x%v", r)
-					}
+				var tempRoot besuStateRoot
+				if err := json.Unmarshal(data, &tempRoot); err == nil {
+					// Besu calls state root "rootHash"
+					stateRoot.StateRoot = tempRoot.StateRoot
 				}
 			}
 			//fmt.Printf("%v\n", string(data))

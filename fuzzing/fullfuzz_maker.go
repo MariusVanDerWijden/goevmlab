@@ -131,6 +131,9 @@ func MakeRandProgram(fuzz *fuzz.Fuzzer) []byte {
 			fuzz.Fuzz(&code)
 			fuzz.Fuzz(&isCreate2)
 			fuzz.Fuzz(&callOp)
+			if callOp == ops.BLOCKHASH {
+				callOp = ops.STATICCALL
+			}
 			p.CreateAndCall(code, isCreate2, callOp)
 		case 13:
 			callRandomPrecompile(p, fuzz)
