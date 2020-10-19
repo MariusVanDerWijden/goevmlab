@@ -33,7 +33,10 @@ import (
 
 // BesuVM is s Evm-interface wrapper around the `evmtool` binary, based on Besu.
 type BesuVM struct {
-	path string
+	path   string
+	cmd    *exec.Cmd
+	stdout io.ReadCloser
+	stdin  io.WriteCloser
 }
 
 func NewBesuVM(path string) *BesuVM {
@@ -42,12 +45,12 @@ func NewBesuVM(path string) *BesuVM {
 	}
 }
 
-// RunStateTest implements the Evm interface
-func (evm *BesuVM) RunStateTest(path string, out io.Writer, speedTest bool) (string, error) {
+func (evm *BesuVM) startCommand(path string, speedTest bool) (string, error) {
 	var (
-		stdout io.ReadCloser
 		err    error
 		cmd    *exec.Cmd
+		stdout io.ReadCloser
+		stdin  io.WriteCloser
 	)
 	if speedTest {
 		cmd = exec.Command(evm.path, "--nomemory",
@@ -55,12 +58,14 @@ func (evm *BesuVM) RunStateTest(path string, out io.Writer, speedTest bool) (str
 			"state-test", path)
 	} else {
 		cmd = exec.Command(evm.path, "--nomemory",
-			"--Xberlin-enabled", "true",
+			//"--Xberlin-enabled", "true",
 			"--json",
 			"state-test", path) // exclude memory
 		// For running this via docker, this is the 'raw' base command
 		//docker run --rm  -i -v ~/yolov2:/yolov2/ hyperledger/besu-evmtool:develop --Xberlin-enabled true state-test  /yolov2/tests/$f
-
+	}
+	if stdin, err = cmd.StdinPipe(); err != nil {
+		return cmd.String(), err
 	}
 	if stdout, err = cmd.StdoutPipe(); err != nil {
 		return cmd.String(), err
@@ -68,11 +73,28 @@ func (evm *BesuVM) RunStateTest(path string, out io.Writer, speedTest bool) (str
 	if err = cmd.Start(); err != nil {
 		return cmd.String(), err
 	}
-	// copy everything to the given writer
-	evm.Copy(out, stdout)
-	// release resources, handle error but ignore non-zero exit codes
-	_ = cmd.Wait()
+	evm.cmd = cmd
+	evm.stdout = stdout
+	evm.stdin = stdin
 	return cmd.String(), nil
+}
+
+// RunStateTest implements the Evm interface
+func (evm *BesuVM) RunStateTest(path string, out io.Writer, speedTest bool) (string, error) {
+	if evm.cmd == nil {
+		// Start the process and execute the test
+		evm.startCommand(path, speedTest)
+	} else {
+		// Use the existing process and execute the test
+		file, err := os.Open(path)
+		if err != nil {
+			return "", err
+		}
+		io.Copy(evm.stdin, file)
+	}
+	// copy everything to the given writer
+	evm.Copy(out, evm.stdout)
+	return evm.cmd.String(), nil
 }
 
 func (evm *BesuVM) Name() string {
@@ -138,9 +160,8 @@ func (evm *BesuVM) Copy(out io.Writer, input io.Reader) {
 					stateRoot.StateRoot = tempRoot.StateRoot
 				}
 			}
-			//fmt.Printf("%v\n", string(data))
-			// For now, just ignore these
-			continue
+			// State root is the last thing to copy
+			break
 		}
 		if elem.ReturnStack == nil {
 			elem.ReturnStack = make([]uint32, 0)
