@@ -18,12 +18,15 @@ package evms
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/core/vm"
 )
@@ -47,12 +50,18 @@ func (evm *BesuVM) RunStateTest(path string, out io.Writer, speedTest bool) (str
 		cmd    *exec.Cmd
 	)
 	if speedTest {
-		cmd = exec.Command(evm.path, "--nomemory", "state-test", path)
+		cmd = exec.Command(evm.path, "--nomemory",
+			"--Xberlin-enabled", "true",
+			"state-test", path)
 	} else {
-		// evm --nomemory --json state-test blaketest.json
-		cmd = exec.Command(evm.path, "--nomemory", "--json", "state-test", path) // exclude memory
-	}
+		cmd = exec.Command(evm.path, "--nomemory",
+			"--Xberlin-enabled", "true",
+			"--json",
+			"state-test", path) // exclude memory
+		// For running this via docker, this is the 'raw' base command
+		//docker run --rm  -i -v ~/yolov2:/yolov2/ hyperledger/besu-evmtool:develop --Xberlin-enabled true state-test  /yolov2/tests/$f
 
+	}
 	if stdout, err = cmd.StdoutPipe(); err != nil {
 		return cmd.String(), err
 	}
@@ -73,6 +82,26 @@ func (evm *BesuVM) Name() string {
 func (vm *BesuVM) Close() {
 }
 
+func (vm *BesuVM) GetStateRoot(path string) (string, error) {
+	// Run without tracing
+	cmd := exec.Command(vm.path, "--nomemory",
+		"--Xberlin-enabled", "true",
+		"state-test", path)
+
+	/// {"output":"","gasUsed":"0x798765","time":342028058,"test":"00000000-storagefuzz-0","fork":"Berlin","d":0,"g":0,"v":0,"postHash":"0xbaeec41171e943575740bb99cdd8ffd45fa6207bf170f99c1a61425069ffae97","postLogsHash":"0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347","pass":false}
+	data, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	start := strings.Index(string(data), `"postHash:":"`)
+	if start > 0 {
+		start = start + len(`"postHash:":"`)
+		root := string(data[start : start+64])
+		return root, nil
+	}
+	return "", errors.New("no stateroot found")
+}
+
 type besuStateRoot struct {
 	StateRoot string `json:"postHash"`
 }
@@ -85,6 +114,12 @@ func (evm *BesuVM) Copy(out io.Writer, input io.Reader) {
 	for scanner.Scan() {
 		data := scanner.Bytes()
 		var elem vm.StructLog
+		// Besu (like Nethermind) sometimes report a negative refund
+		if i := bytes.Index(data, []byte(`"refund":-`)); i > 0 {
+			// we can just make it positive, it will be zeroed later
+			data[i+9] = byte(' ')
+		}
+
 		err := json.Unmarshal(data, &elem)
 		if err != nil {
 			fmt.Printf("besu err: %v, line\n\t%v\n", err, string(data))

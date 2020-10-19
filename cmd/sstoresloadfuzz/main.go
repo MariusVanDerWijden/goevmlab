@@ -31,14 +31,11 @@ func initApp() *cli.App {
 	app.Name = filepath.Base(os.Args[0])
 	app.Author = "Martin Holst Swende"
 	app.Usage = "Fuzzer targeting SSTORE and SLOAD"
-	app.Flags = []cli.Flag{
-		common.GethFlag,
-		common.ParityFlag,
-		common.NethermindFlag,
-		common.AlethFlag,
+	app.Flags = append(app.Flags, common.VmFlags...)
+	app.Flags = append(app.Flags,
 		common.ThreadFlag,
 		common.LocationFlag,
-	}
+	)
 	app.Action = startFuzzer
 	return app
 }
@@ -54,5 +51,5 @@ func main() {
 
 func startFuzzer(c *cli.Context) error {
 	fmt.Printf("Generator started \n")
-	return common.ExecuteFuzzer(c, fuzzing.Generate2200Test, "storagefuzz")
+	return common.ExecuteFuzzer(c, fuzzing.Generate2200BerlinTest, "storagefuzz")
 }

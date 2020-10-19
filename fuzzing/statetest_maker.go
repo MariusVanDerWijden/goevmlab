@@ -18,11 +18,12 @@ package fuzzing
 
 import (
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/core/state"
 	"io"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
+
+	"github.com/ethereum/go-ethereum/core/state"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -415,8 +416,19 @@ func GenerateSubroutineTest() *GstMaker {
 	return gst
 }
 
+func Generate2200BerlinTest() *GstMaker {
+	gst := BasicStateTest("Berlin")
+	create2200Test(gst)
+	return gst
+}
+
 func Generate2200Test() *GstMaker {
 	gst := BasicStateTest("Istanbul")
+	create2200Test(gst)
+	return gst
+}
+
+func create2200Test(gst *GstMaker) {
 	// The accounts which we want to be able to invoke
 	addrs := []common.Address{
 		common.HexToAddress("0xF1"),
@@ -452,7 +464,6 @@ func Generate2200Test() *GstMaker {
 		}
 		gst.SetTx(tx)
 	}
-	return gst
 }
 
 func GenerateECRecover() (*GstMaker, []byte) {
