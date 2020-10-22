@@ -40,6 +40,39 @@ func NewGethEVM(path string) *GethEVM {
 	}
 }
 
+func (evm *GethEVM) runDocker(path string, out io.Writer, speedTest bool) (string, error) {
+	var (
+		stderr io.ReadCloser
+		err    error
+		cmd    *exec.Cmd
+		args = []string{
+			"docker",
+			"run",
+			"ethereum/client-go:alltools-latest", 
+			"evm"
+			"--json", 
+			"--nomemory", 
+			"statetest"
+			path
+		}
+	)
+	if speedTest {
+		cmd = exec.Command(evm.path, "--nomemory", "--nostack", "statetest", path)
+	} else {
+		cmd = exec.Command(args...)
+	}
+	if stderr, err = cmd.StderrPipe(); err != nil {
+		return cmd.String(), err
+	}
+	if err = cmd.Start(); err != nil {
+		return cmd.String(), err
+	}
+	// copy everything to the given writer
+	evm.Copy(out, stderr)
+	// release resources
+	return cmd.String(), cmd.Wait()
+}
+
 // GetStateRoot runs the test and returns the stateroot
 // This currently only works for non-filled statetests. TODO: make it work even if the
 // test is filled. Either by getting the whole trace, or adding stateroot to exec std output
