@@ -45,21 +45,20 @@ func (evm *GethEVM) runDocker(path string, out io.Writer, speedTest bool) (strin
 		stderr io.ReadCloser
 		err    error
 		cmd    *exec.Cmd
-		args = []string{
-			"docker",
+		args   = []string{
 			"run",
-			"ethereum/client-go:alltools-latest", 
-			"evm"
-			"--json", 
-			"--nomemory", 
-			"statetest"
-			path
+			"ethereum/client-go:alltools-latest",
+			"evm",
+			"--json",
+			"--nomemory",
+			"statetest",
+			path,
 		}
 	)
 	if speedTest {
 		cmd = exec.Command(evm.path, "--nomemory", "--nostack", "statetest", path)
 	} else {
-		cmd = exec.Command(args...)
+		cmd = exec.Command("docker", args...)
 	}
 	if stderr, err = cmd.StderrPipe(); err != nil {
 		return cmd.String(), err
