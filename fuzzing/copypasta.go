@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 )
@@ -144,16 +145,21 @@ type stEnvMarshaling struct {
 	Timestamp  math.HexOrDecimal64
 }
 
-//go:generate gencodec -type stTransaction -field-override stTransactionMarshaling -out gen_sttransaction.go
+//go:generate gencodec -type StTransaction -field-override stTransactionMarshaling -out gen_sttransaction.go
 
 type StTransaction struct {
 	GasPrice   *big.Int `json:"gasPrice"`
 	Nonce      uint64   `json:"nonce"`
 	To         string   `json:"to"`
-	Data       []string `json:"data"`
+	Data       []StData `json:"data"`
 	GasLimit   []uint64 `json:"gasLimit"`
 	Value      []string `json:"value"`
 	PrivateKey []byte   `json:"secretKey"`
+}
+
+type StData struct {
+	Data       string            `json:"data,omitempty"`
+	AccessList *types.AccessList `json:"accessList,omitempty"`
 }
 
 type stTransactionMarshaling struct {

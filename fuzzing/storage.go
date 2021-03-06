@@ -17,10 +17,11 @@
 package fuzzing
 
 import (
+	"math/rand"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/goevmlab/ops"
 	"github.com/holiman/goevmlab/program"
-	"math/rand"
 )
 
 // RandStorage sets some slots
@@ -143,13 +144,13 @@ func RandCallSubroutine(addresses []common.Address) []byte {
 			p.Jump(randElem(legitJumps))
 		case 9:
 			// random jump
-			p.Jump(rand.Intn(1+len(p.Bytecode()) * 3 / 2))
+			p.Jump(rand.Intn(1 + len(p.Bytecode())*3/2))
 		case 10, 11:
 			// JUMPSUB (legit)
 			p.JumpSub(randElem(legitSubs))
 		case 12:
 			// JUMPSUB (random)
-			p.JumpSub(rand.Intn(1+len(p.Bytecode()) * 3 / 2))
+			p.JumpSub(rand.Intn(1 + len(p.Bytecode())*3/2))
 		case 13, 14:
 			// CALL
 			// zero value call with no data
@@ -168,7 +169,7 @@ func RandCallSubroutine(addresses []common.Address) []byte {
 			p.Op(ops.REVERT)
 			return p.Bytecode()
 		}
-		if len(p.Bytecode()) > 1024 {
+		if len(p.Bytecode()) > 2048 {
 			return p.Bytecode()
 		}
 	}

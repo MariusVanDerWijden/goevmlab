@@ -65,7 +65,7 @@ func GenerateBLS() (*GstMaker, []byte) {
 			GasLimit:   []uint64{8000000},
 			Nonce:      0,
 			Value:      []string{randHex(4)},
-			Data:       []string{randHex(100)},
+			Data:       []StData{StData{Data: randHex(100)}},
 			GasPrice:   big.NewInt(0x01),
 			To:         dest.Hex(),
 			PrivateKey: hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"),

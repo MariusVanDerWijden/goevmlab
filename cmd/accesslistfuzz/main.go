@@ -126,17 +126,15 @@ func generateCode() (*fuzzing.GstMaker, []byte) {
 	if err != nil {
 		panic(err)
 	}
-	// The transaction
-	if list.Addresses() > 2 || list.StorageKeys() > 2 {
-		fmt.Printf("%v\n", list)
-	}
+	// mutate the accesslist
+	list = mutateAccessList(*list)
 	{
 		tx := &fuzzing.StTransaction{
 			// 8M gaslimit
 			GasLimit:   gasLimit,
 			Nonce:      0,
 			Value:      value,
-			Data:       data,
+			Data:       []fuzzing.StData{{Data: data[0], AccessList: list}},
 			GasPrice:   gasPrice,
 			To:         dest.Hex(),
 			PrivateKey: hexutil.MustDecode("0x45a915e4d060149eb4365960e6a7a45f334393093061116b197e3240065ff2d8"),
@@ -163,4 +161,41 @@ func generateTestChain(testBalance *big.Int, testAddr common.Address, dest commo
 		Timestamp: 9000,
 	}
 	return genesis
+}
+
+func mutateAccessList(list types.AccessList) *types.AccessList {
+	switch rand.Int31n(8) {
+	case 0:
+		// Leave the accesslist as is
+		return &list
+	case 1:
+		// delete the access list
+		return nil
+	case 2:
+		// empty the access list
+		return &types.AccessList{}
+	case 3:
+		// add a random entry and random slots to the list
+		addr := common.BigToAddress(big.NewInt(rand.Int63()))
+		keys := []*common.Hash{}
+		for i := 0; i < rand.Intn(10); i++ {
+			h := common.BigToHash(big.NewInt(rand.Int63()))
+			keys = append(keys, &h)
+		}
+		tuple := types.AccessTuple{Address: &addr, StorageKeys: keys}
+		newList := types.AccessList(append([]types.AccessTuple{tuple}, list...))
+		return &newList
+	case 4:
+		// replace a random entry and random slots of it in the list
+		slot := list[rand.Int31n(int32(len(list)))]
+		addr := common.BigToAddress(big.NewInt(rand.Int63()))
+		keys := []*common.Hash{}
+		for i := 0; i < rand.Intn(len(slot.StorageKeys)); i++ {
+			h := common.BigToHash(big.NewInt(rand.Int63()))
+			keys = append(keys, &h)
+		}
+		tuple := types.AccessTuple{Address: &addr, StorageKeys: keys}
+		newList := types.AccessList(append([]types.AccessTuple{tuple}, list...))
+		return &newList
+	}
 }
